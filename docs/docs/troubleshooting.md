@@ -40,7 +40,9 @@ If you're getting a response from the LLM that doesn't seem to make sense, you c
 
 ### JetBrains
 
-Open `~/.continue/logs/core.log`. The most recent logs are found at the bottom of the file.
+Open `~/.continue/logs/core.log` to view the logs for the Continue plugin. The most recent logs are found at the bottom of the file.
+
+Some JetBrains-related logs may also be found by clicking "Help" > "Show Log in Explorer/Finder".
 
 ## Download the latest pre-release
 
@@ -54,10 +56,10 @@ We are constantly making fixes and improvements to Continue, but the latest chan
 
 On JetBrains, the "pre-release" happens through their Early Access Program (EAP) channel. To download the latest EAP version, enable the EAP channel:
 
-1. Open JetBrains settings (cmd/ctrl+,) and go to "Plugins"
+1. Open JetBrains settings (`cmd/ctrl + ,`) and go to "Plugins"
 2. Click the gear icon at the top
 3. Select "Manage Plugin Repositories..."
-4. Add "[https://plugins.jetbrains.com/plugins/eap/list>](https://plugins.jetbrains.com/plugins/eap/list>)" to the list
+4. Add "[https://plugins.jetbrains.com/plugins/eap/list](https://plugins.jetbrains.com/plugins/eap/list)" to the list
 5. You'll now always be able to download the latest EAP version from the marketplace
 
 ## Download an Older Version
@@ -121,6 +123,10 @@ If you have entered a valid API key and model, but are still getting a 404 error
 If you are having persistent errors with indexing, our recommendation is to rebuild your index from scratch. Note that for large codebases this may take some time.
 
 This can be accomplished using the following command: `Continue: Rebuild codebase index`.
+
+### Android Studio - "Nothing to show" in Chat
+
+This can be fixed by selecting `Actions > Choose Boot runtime for the IDE` then selecting the latest version, and then restarting Android Studio. [See this thread](https://github.com/continuedev/continue/issues/2280#issuecomment-2365231567) for details.
 
 ## Still having trouble?
 

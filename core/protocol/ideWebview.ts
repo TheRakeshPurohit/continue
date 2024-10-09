@@ -15,7 +15,7 @@ export type ToIdeFromWebviewProtocol = ToIdeFromWebviewOrCoreProtocol & {
     },
   ];
   openUrl: [string, void];
-  applyToCurrentFile: [{ text: string }, void];
+  applyToCurrentFile: [{ text: string; streamId: string }, void];
   showTutorial: [undefined, void];
   showFile: [{ filepath: string }, void];
   openConfigJson: [undefined, void];
@@ -26,8 +26,16 @@ export type ToIdeFromWebviewProtocol = ToIdeFromWebviewOrCoreProtocol & {
   insertAtCursor: [{ text: string }, void];
   copyText: [{ text: string }, void];
   "jetbrains/editorInsetHeight": [{ height: number }, void];
+  "vscode/openMoveRightMarkdown": [undefined, void];
   setGitHubAuthToken: [{ token: string }, void];
+  acceptDiff: [{ filepath: string }, void];
+  rejectDiff: [{ filepath: string }, void];
 };
+
+export interface ApplyState {
+  streamId: string;
+  status: "streaming" | "done" | "closed";
+}
 
 export type ToWebviewFromIdeProtocol = ToWebviewFromIdeOrCoreProtocol & {
   setInactive: [undefined, void];
@@ -58,7 +66,9 @@ export type ToWebviewFromIdeProtocol = ToWebviewFromIdeOrCoreProtocol & {
   setColors: [{ [key: string]: string }, void];
   "jetbrains/editorInsetRefresh": [undefined, void];
   addApiKey: [undefined, void];
-  setupLocalModel: [undefined, void];
+  setupLocalConfig: [undefined, void];
   incrementFtc: [undefined, void];
-  openOnboarding: [undefined, void];
+  openOnboardingCard: [undefined, void];
+  applyCodeFromChat: [undefined, void];
+  updateApplyState: [ApplyState, void];
 };

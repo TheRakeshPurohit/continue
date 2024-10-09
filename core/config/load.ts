@@ -306,7 +306,7 @@ async function intermediateToFinalConfig(
       (model) => model.providerName === "free-trial",
     );
     if (freeTrialModels.length > 0) {
-      const ghAuthToken = await ide.getGitHubAuthToken();
+      const ghAuthToken = await ide.getGitHubAuthToken({});
       for (const model of freeTrialModels) {
         (model as FreeTrial).setupGhAuthToken(ghAuthToken);
       }
@@ -341,7 +341,7 @@ async function intermediateToFinalConfig(
                 // This shouldn't happen
                 throw new Error("Free trial cannot be used with control plane");
               }
-              const ghAuthToken = await ide.getGitHubAuthToken();
+              const ghAuthToken = await ide.getGitHubAuthToken({});
               (llm as FreeTrial).setupGhAuthToken(ghAuthToken);
             }
             return llm;
@@ -356,7 +356,14 @@ async function intermediateToFinalConfig(
   // These context providers are always included, regardless of what, if anything,
   // the user has configured in config.json
 
-  const codebaseContextParams = ((config.contextProviders || []).filter(isContextProviderWithParams).find(cp => cp.name === "codebase") as ContextProviderWithParams | undefined)?.params || {};
+  const codebaseContextParams =
+    (
+      (config.contextProviders || [])
+        .filter(isContextProviderWithParams)
+        .find((cp) => cp.name === "codebase") as
+        | ContextProviderWithParams
+        | undefined
+    )?.params || {};
   const DEFAULT_CONTEXT_PROVIDERS = [
     new FileContextProvider({}),
     new CodebaseContextProvider(codebaseContextParams),
@@ -588,7 +595,24 @@ async function loadFullConfigNode(
     try {
       // Try config.ts first
       const configJsPath = getConfigJsPath();
-      const module = await import(configJsPath);
+      let module: any;
+
+      try {
+        module = await import(configJsPath);
+      } catch (e) {
+        console.log(e);
+        console.log(
+          "Could not load config.ts as absolute path, retrying as file url ...",
+        );
+        try {
+          module = await import(`file://${configJsPath}`);
+        } catch (e) {
+          throw new Error("Could not load config.ts as file url either", {
+            cause: e,
+          });
+        }
+      }
+
       if (typeof require !== "undefined") {
         delete require.cache[require.resolve(configJsPath)];
       }

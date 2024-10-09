@@ -18,7 +18,7 @@ import {
   vscForeground,
   vscInputBackground,
 } from "../components";
-import HeaderButtonWithText from "../components/HeaderButtonWithText";
+import ButtonWithTooltip from "../components/ButtonWithTooltip";
 import useHistory from "../hooks/useHistory";
 import { useNavigationListener } from "../hooks/useNavigationListener";
 import { getFontSize } from "../util";
@@ -175,7 +175,7 @@ function TableRow({
         </TdDiv>
 
         {hovered && (
-          <HeaderButtonWithText
+          <ButtonWithTooltip
             className="mr-2"
             text="Edit"
             onClick={async () => {
@@ -183,11 +183,11 @@ function TableRow({
             }}
           >
             <PencilSquareIcon width="1.3em" height="1.3em" />
-          </HeaderButtonWithText>
+          </ButtonWithTooltip>
         )}
 
         {hovered && (
-          <HeaderButtonWithText
+          <ButtonWithTooltip
             className="mr-2"
             text="Delete"
             onClick={async () => {
@@ -196,7 +196,7 @@ function TableRow({
             }}
           >
             <TrashIcon width="1.3em" height="1.3em" />
-          </HeaderButtonWithText>
+          </ButtonWithTooltip>
         )}
       </div>
     </td>
@@ -404,6 +404,11 @@ function History() {
                         This Month
                       </SectionHeader>
                     )}
+                  {date < lastMonth && prevDate > lastMonth && (
+                    <SectionHeader style={{ top: `${headerHeight - 1}px` }}>
+                      Older
+                    </SectionHeader>
+                  )}
 
                   <Tr key={index}>
                     <TableRow

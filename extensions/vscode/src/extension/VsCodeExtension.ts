@@ -15,10 +15,8 @@ import {
 } from "../autocomplete/statusBar";
 import { registerAllCommands } from "../commands";
 import { ContinueGUIWebviewViewProvider } from "../ContinueGUIWebviewViewProvider";
-import { registerDebugTracker } from "../debug/debug";
 import { DiffManager } from "../diff/horizontal";
-import { VerticalPerLineDiffManager } from "../diff/verticalPerLine/manager";
-import { VsCodeIde } from "../ideProtocol";
+import { VerticalDiffManager } from "../diff/vertical/manager";
 import { registerAllCodeLensProviders } from "../lang-server/codeLens";
 import { QuickEdit } from "../quickEdit/QuickEditQuickPick";
 import { setupRemoteConfigSync } from "../stubs/activation";
@@ -26,8 +24,11 @@ import {
   getControlPlaneSessionInfo,
   WorkOsAuthProvider,
 } from "../stubs/WorkOsAuthProvider";
+import { arePathsEqual } from "../util/arePathsEqual";
 import { Battery } from "../util/battery";
+import { AUTH_TYPE, EXTENSION_NAME } from "../util/constants";
 import { TabAutocompleteModel } from "../util/loadAutocompleteModel";
+import { VsCodeIde } from "../VsCodeIde";
 import type { VsCodeWebviewProtocol } from "../webviewProtocol";
 import { VsCodeMessenger } from "./VsCodeMessenger";
 
@@ -41,7 +42,7 @@ export class VsCodeExtension {
   private sidebar: ContinueGUIWebviewViewProvider;
   private windowId: string;
   private diffManager: DiffManager;
-  private verticalDiffManager: VerticalPerLineDiffManager;
+  private verticalDiffManager: VerticalDiffManager;
   webviewProtocolPromise: Promise<VsCodeWebviewProtocol>;
   private core: Core;
   private battery: Battery;
@@ -50,7 +51,7 @@ export class VsCodeExtension {
   constructor(context: vscode.ExtensionContext) {
     // Register auth provider
     this.workOsAuthProvider = new WorkOsAuthProvider(context);
-    this.workOsAuthProvider.initialize();
+    this.workOsAuthProvider.refreshSessions();
     context.subscriptions.push(this.workOsAuthProvider);
 
     let resolveWebviewProtocol: any = undefined;
@@ -66,7 +67,7 @@ export class VsCodeExtension {
 
     // Dependencies of core
     let resolveVerticalDiffManager: any = undefined;
-    const verticalDiffManagerPromise = new Promise<VerticalPerLineDiffManager>(
+    const verticalDiffManagerPromise = new Promise<VerticalDiffManager>(
       (resolve) => {
         resolveVerticalDiffManager = resolve;
       },
@@ -124,8 +125,9 @@ export class VsCodeExtension {
     resolveConfigHandler?.(this.configHandler);
 
     this.configHandler.reloadConfig();
-    this.verticalDiffManager = new VerticalPerLineDiffManager(
+    this.verticalDiffManager = new VerticalDiffManager(
       this.configHandler,
+      this.sidebar.webviewProtocol,
     );
     resolveVerticalDiffManager?.(this.verticalDiffManager);
     this.tabAutocompleteModel = new TabAutocompleteModel(this.configHandler);
@@ -163,7 +165,7 @@ export class VsCodeExtension {
     });
 
     // Tab autocomplete
-    const config = vscode.workspace.getConfiguration("continue");
+    const config = vscode.workspace.getConfiguration(EXTENSION_NAME);
     const enabled = config.get<boolean>("enableTabAutocomplete");
 
     // Register inline completion provider
@@ -210,7 +212,8 @@ export class VsCodeExtension {
       this.core,
     );
 
-    registerDebugTracker(this.sidebar.webviewProtocol, this.ide);
+    // Disabled due to performance issues
+    // registerDebugTracker(this.sidebar.webviewProtocol, this.ide);
 
     // Listen for file saving - use global file watcher so that changes
     // from outside the window are also caught
@@ -226,13 +229,14 @@ export class VsCodeExtension {
       // Listen for file changes in the workspace
       const filepath = event.uri.fsPath;
 
-      if (filepath === getConfigJsonPath()) {
+      if (arePathsEqual(filepath, getConfigJsonPath())) {
         // Trigger a toast notification to provide UI feedback that config
         // has been updated
         const showToast = context.globalState.get<boolean>(
           "showConfigUpdateToast",
           true,
         );
+
         if (showToast) {
           vscode.window
             .showInformationMessage("Config updated", "Don't show again")
@@ -266,7 +270,7 @@ export class VsCodeExtension {
     vscode.authentication.onDidChangeSessions(async (e) => {
       if (e.provider.id === "github") {
         this.configHandler.reloadConfig();
-      } else if (e.provider.id === "continue") {
+      } else if (e.provider.id === AUTH_TYPE) {
         const sessionInfo = await getControlPlaneSessionInfo(true);
         this.webviewProtocolPromise.then(async (webviewProtocol) => {
           webviewProtocol.request("didChangeControlPlaneSessionInfo", {
@@ -329,7 +333,7 @@ export class VsCodeExtension {
     });
   }
 
-  static continueVirtualDocumentScheme = "continue";
+  static continueVirtualDocumentScheme = EXTENSION_NAME;
 
   // eslint-disable-next-line @typescript-eslint/naming-convention
   private PREVIOUS_BRANCH_FOR_WORKSPACE_DIR: { [dir: string]: string } = {};

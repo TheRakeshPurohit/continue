@@ -6,7 +6,6 @@ import {
   ModelDescription,
 } from "../..";
 import { renderTemplatedString } from "../../promptFiles/renderTemplatedString";
-import { DEFAULT_MAX_TOKENS } from "../constants";
 import { BaseLLM } from "../index";
 import Anthropic from "./Anthropic";
 import Azure from "./Azure";
@@ -36,6 +35,7 @@ import OpenAI from "./OpenAI";
 import OpenRouter from "./OpenRouter";
 import Replicate from "./Replicate";
 import SageMaker from "./SageMaker";
+import SambaNova from "./SambaNova";
 import TextGenWebUI from "./TextGenWebUI";
 import Together from "./Together";
 import Vllm from "./Vllm";
@@ -75,6 +75,7 @@ const LLMs = [
   OpenRouter,
   Nvidia,
   Vllm,
+  SambaNova,
   Mock,
 ];
 
@@ -110,8 +111,7 @@ export async function llmFromDescription(
       model: (desc.model || cls.defaultOptions?.model) ?? "codellama-7b",
       maxTokens:
         finalCompletionOptions.maxTokens ??
-        cls.defaultOptions?.completionOptions?.maxTokens ??
-        DEFAULT_MAX_TOKENS,
+        cls.defaultOptions?.completionOptions?.maxTokens,
     },
     systemMessage,
     writeLog,

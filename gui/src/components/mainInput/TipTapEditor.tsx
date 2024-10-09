@@ -19,6 +19,7 @@ import { usePostHog } from "posthog-js/react";
 import { useContext, useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import styled from "styled-components";
+import { v4 } from "uuid";
 import {
   defaultBorderRadius,
   lightGray,
@@ -47,7 +48,7 @@ import {
   isMetaEquivalentKeyPressed,
   isWebEnvironment,
 } from "../../util";
-import CodeBlockExtension from "./CodeBlockExtension";
+import { CodeBlockExtension } from "./CodeBlockExtension";
 import { SlashCommand } from "./CommandsExtension";
 import InputToolbar from "./InputToolbar";
 import { Mention } from "./MentionExtension";
@@ -60,7 +61,6 @@ import { ComboBoxItem } from "./types";
 
 const InputBoxDiv = styled.div`
   resize: none;
-
   padding: 8px 12px;
   padding-bottom: 4px;
   font-family: inherit;
@@ -70,7 +70,6 @@ const InputBoxDiv = styled.div`
   width: calc(100% - 24px);
   background-color: ${vscInputBackground};
   color: ${vscForeground};
-  z-index: 1;
   border: 0.5px solid ${vscInputBorder};
   outline: none;
   font-size: ${getFontSize()}px;
@@ -97,7 +96,6 @@ const HoverDiv = styled.div`
   opacity: 0.5;
   background-color: ${vscBadgeBackground};
   color: ${vscForeground};
-  z-index: 100;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -110,7 +108,6 @@ const HoverTextDiv = styled.div`
   top: 0;
   left: 0;
   color: ${vscForeground};
-  z-index: 100;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -158,6 +155,7 @@ function TipTapEditor(props: TipTapEditorProps) {
 
   const posthog = usePostHog();
   const [isEditorFocused, setIsEditorFocused] = useState(false);
+  const [hasDefaultModel, setHasDefaultModel] = useState(true);
 
   const inSubmenuRef = useRef<string | undefined>(undefined);
   const inDropdownRef = useRef(false);
@@ -171,7 +169,7 @@ function TipTapEditor(props: TipTapEditorProps) {
 
     editor.commands.deleteRange({
       from: indexOfAt + 2,
-      to: contents.length + 1,
+      to: editor.state.selection.anchor,
     });
     inSubmenuRef.current = providerId;
 
@@ -212,6 +210,20 @@ function TipTapEditor(props: TipTapEditorProps) {
   const active = useSelector((state: RootState) => state.state.active);
   const activeRef = useUpdatingRef(active);
 
+  // Only set `hasDefaultModel` after a timeout to prevent jank
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setHasDefaultModel(
+        !!defaultModel &&
+          defaultModel.apiKey !== undefined &&
+          defaultModel.apiKey !== "",
+      );
+    }, 3500);
+
+    // Cleanup function to clear the timeout if the component unmounts
+    return () => clearTimeout(timer);
+  }, [defaultModel]);
+
   async function handleImageFile(
     file: File,
   ): Promise<[HTMLImageElement, string] | undefined> {
@@ -245,10 +257,10 @@ function TipTapEditor(props: TipTapEditorProps) {
         };
       });
     } else {
-      ideMessenger.post("errorPopup", {
-        message:
-          "Images need to be in jpg or png format and less than 10MB in size.",
-      });
+      ideMessenger.post("showToast", [
+        "error",
+        "Images need to be in jpg or png format and less than 10MB in size.",
+      ]);
     }
     return undefined;
   }
@@ -258,6 +270,16 @@ function TipTapEditor(props: TipTapEditorProps) {
   );
 
   const { prevRef, nextRef, addRef } = useInputHistory();
+
+  function getPlaceholder() {
+    if (!hasDefaultModel) {
+      return "Configure a Chat model to get started";
+    }
+
+    return historyLengthRef.current === 0
+      ? "Ask anything, '/' for slash commands, '@' to add context"
+      : "Ask a follow-up";
+  }
 
   const editor: Editor = useEditor({
     extensions: [
@@ -299,10 +321,7 @@ function TipTapEditor(props: TipTapEditorProps) {
         },
       }),
       Placeholder.configure({
-        placeholder: () =>
-          historyLengthRef.current === 0
-            ? "Ask anything, '/' for slash commands, '@' to add context"
-            : "Ask a follow-up",
+        placeholder: getPlaceholder,
       }),
       Paragraph.extend({
         addKeyboardShortcuts() {
@@ -319,7 +338,7 @@ function TipTapEditor(props: TipTapEditorProps) {
               return true;
             },
 
-            "Cmd-Enter": () => {
+            "Mod-Enter": () => {
               onEnterRef.current({
                 useCodebase: true,
                 noContext: !useActiveFile,
@@ -336,7 +355,7 @@ function TipTapEditor(props: TipTapEditorProps) {
 
               return true;
             },
-            "Cmd-Backspace": () => {
+            "Mod-Backspace": () => {
               // If you press cmd+backspace wanting to cancel,
               // but are inside of a text box, it shouldn't
               // delete the text
@@ -711,7 +730,11 @@ function TipTapEditor(props: TipTapEditorProps) {
           description: `${relativePath} ${rangeStr}`,
           id: {
             providerTitle: "code",
-            itemId: rif.filepath,
+            itemId: v4(),
+          },
+          uri: {
+            type: "file",
+            value: rif.filepath,
           },
         };
 
@@ -792,19 +815,15 @@ function TipTapEditor(props: TipTapEditorProps) {
     };
   }, []);
 
-  const [optionKeyHeld, setOptionKeyHeld] = useState(false);
+  const [activeKey, setActiveKey] = useState<string | null>(null);
 
   return (
     <InputBoxDiv
       onKeyDown={(e) => {
-        if (e.key === "Alt") {
-          setOptionKeyHeld(true);
-        }
+        setActiveKey(e.key);
       }}
       onKeyUp={(e) => {
-        if (e.key === "Alt") {
-          setOptionKeyHeld(false);
-        }
+        setActiveKey(null);
       }}
       className="cursor-text"
       onClick={() => {
@@ -856,12 +875,16 @@ function TipTapEditor(props: TipTapEditorProps) {
         }}
       />
       <InputToolbar
-        showNoContext={optionKeyHeld}
+        activeKey={activeKey}
         hidden={shouldHideToolbar && !props.isMainInput}
         onAddContextItem={() => {
-          if (editor.getText().endsWith("@")) {
-          } else {
+          if (!editor.getText().endsWith("@")) {
             editor.commands.insertContent("@");
+          }
+        }}
+        onAddSlashCommand={() => {
+          if (!editor.getText().endsWith("/")) {
+            editor.commands.insertContent("/");
           }
         }}
         onEnter={onEnterRef.current}
@@ -876,6 +899,7 @@ function TipTapEditor(props: TipTapEditorProps) {
           });
         }}
       />
+
       {showDragOverMsg &&
         modelSupportsImages(
           defaultModel.provider,
