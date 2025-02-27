@@ -4,6 +4,10 @@ description: Reference for the Continue _config.json_ configuration file
 keywords: [config, config_schema.json, json]
 ---
 
+:::info
+We recently introduced a new configuration format, `config.yaml`, to replace `config.json`. See the `config.yaml` reference and migration guide [here](./yaml-reference.md).
+:::
+
 Below are details for each property that can be set in `config.json`. The config schema code is found in [`extensions/vscode/config_schema.json`](https://github.com/continuedev/continue/blob/main/extensions/vscode/config_schema.json).
 
 **All properties at all levels are optional unless explicitly marked required**
@@ -32,6 +36,7 @@ Each model has specific configuration options tailored to its provider and funct
 - `engine`: Engine for Azure OpenAI requests.
 - `capabilities`: Override auto-detected capabilities:
   - `uploadImage`: Boolean indicating if the model supports image uploads.
+  - `tools`: Boolean indicating if the model supports tool use.
 
 _(AWS Only)_
 
@@ -108,13 +113,13 @@ Embeddings model settings - the model used for @Codebase and @docs.
 
 **Properties:**
 
-- `provider` (**required**): Specifies the embeddings provider, with options including `transformers.js`, `ollama`, `openai`, `cohere`, `free-trial`, `gemini`, etc
+- `provider` (**required**): Specifies the embeddings provider, with options including `transformers.js`, `ollama`, `openai`, `cohere`, `gemini`, etc
 - `model`: Model name for embeddings.
 - `apiKey`: API key for the provider.
 - `apiBase`: Base URL for API requests.
 - `requestOptions`: Additional HTTP request settings specific to the embeddings provider.
-- `maxChunkSize`: Maximum tokens per document chunk. Minimum is 128 tokens.
-- `maxBatchSize`: Maximum number of chunks per request. Minimum is 1 chunk.
+- `maxEmbeddingChunkSize`: Maximum tokens per document chunk. Minimum is 128 tokens.
+- `maxEmbeddingBatchSize`: Maximum number of chunks per request. Minimum is 1 chunk.
 
 (AWS ONLY)
 
@@ -129,8 +134,8 @@ Example:
     "provider": "openai",
     "model": "text-embedding-ada-002",
     "apiKey": "<API_KEY>",
-    "maxChunkSize": 256,
-    "maxBatchSize": 5
+    "maxEmbeddingChunkSize": 256,
+    "maxEmbeddingBatchSize": 5
   }
 }
 ```
@@ -202,7 +207,7 @@ Configuration for the reranker model used in response ranking.
 
 **Properties:**
 
-- `name` (**required**): Reranker name, e.g., `cohere`, `voyage`, `llm`, `free-trial`, `huggingface-tei`, `bedrock`
+- `name` (**required**): Reranker name, e.g., `cohere`, `voyage`, `llm`, `huggingface-tei`, `bedrock`
 - `params`:
   - `model`: Model name
   - `apiKey`: Api key
